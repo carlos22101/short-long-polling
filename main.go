@@ -1,18 +1,19 @@
 package main
 
 import (
+	"api-hexagonal-go/src/applications"
 	"api-hexagonal-go/src/infraestructure/controllers"
+	"api-hexagonal-go/src/infraestructure/controllers/notifier"
 	"api-hexagonal-go/src/infraestructure/database"
 	"api-hexagonal-go/src/infraestructure/repositories"
-	"api-hexagonal-go/src/applications"
 	"api-hexagonal-go/src/infraestructure/routes"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
+// 🔹 Servidor de Productos en el puerto 8000
 func startServerProductos() {
 	router := gin.Default()
 
@@ -22,7 +23,7 @@ func startServerProductos() {
 	productoUseCase := applications.NewProductoUseCase(productoRepo)
 	routes.ProductoRoutes(router, productoUseCase)
 
-	
+	// Short Polling
 	productoPolling := controllers.NewProductoPolling(productoUseCase)
 	go productoPolling.StartPolling()
 
@@ -30,27 +31,24 @@ func startServerProductos() {
 	log.Fatal(router.Run(":8000"))
 }
 
+// 🔹 Servidor de Usuarios en el puerto 8001
 func startServerUsuarios() {
 	router := gin.Default()
 
 	// Conectar BD
 	database.InitDB()
 	usuarioRepo := repositories.NewUsuarioRepository(database.DB)
-	usuarioUseCase := applications.NewUsuariouseCase(usuarioRepo)
+	notifierInstance := notifier.NewNotifier() // ✅ Crear una única instancia de Notifier
+	usuarioUseCase := applications.NewUsuarioUseCase(usuarioRepo, notifierInstance) // ✅ Pasar Notifier
 	routes.UsuarioRoutes(router, usuarioUseCase)
 
-	// Iniciar Short Polling
+	// Short Polling
 	usuarioPolling := controllers.NewUsuarioPolling(usuarioUseCase)
 	go usuarioPolling.StartPolling()
 
-	// Iniciar Long Polling
-	usuarioLongPolling := controllers.NewUsuarioLongPolling(usuarioUseCase)
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			usuarioLongPolling.NotifyChanges()
-		}
-	}()
+	// Long Polling
+	usuarioLongPolling := controllers.NewUsuarioLongPolling(notifierInstance) // ✅ Usar el Notifier
+	router.GET("/usuarios/longpolling", usuarioLongPolling.LongPollingHandler) // ✅ Ruta Long Polling
 
 	fmt.Println("🚀 Servidor de usuarios corriendo en http://localhost:8001")
 	log.Fatal(router.Run(":8001"))

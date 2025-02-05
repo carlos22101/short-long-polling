@@ -8,7 +8,6 @@ import (
 
 func UsuarioRoutes(router *gin.Engine, usuarioUseCase *applications.UsuarioUseCase) {
 	usuarioController := controllers.UsuarioController{UseCase: usuarioUseCase}
-	usuarioLongPolling := controllers.NewUsuarioLongPolling(usuarioUseCase)
 
 
 	usuarioGroup := router.Group("/usuarios")
@@ -18,6 +17,6 @@ func UsuarioRoutes(router *gin.Engine, usuarioUseCase *applications.UsuarioUseCa
 		usuarioGroup.POST("/", usuarioController.CreateUsuario)
 		usuarioGroup.PUT("/:id", usuarioController.UpdateUsuario)
 		usuarioGroup.DELETE("/:id", usuarioController.DeleteUsuario)
-		usuarioGroup.GET("/longpolling", usuarioLongPolling.StartLongPolling)
+
 	}
 }
